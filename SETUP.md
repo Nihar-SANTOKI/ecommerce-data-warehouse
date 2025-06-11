@@ -345,16 +345,6 @@ make clean-all
 make dbt-deps
 ```
 
-## 📚 Next Steps
-
-After successful setup:
-
-1. **Explore the data**: Use `make dbt-docs` to browse the data lineage
-2. **Add new models**: Create custom analytics in `dbt_project/models/marts/`
-3. **Connect BI tools**: Point Tableau/PowerBI to the Snowflake `CORE` schema
-4. **Add more sources**: Extend the pipeline with additional data sources
-5. **Schedule runs**: Set up Airflow or dbt Cloud for production scheduling
-
 ## 🤝 Need Help?
 
 - Check the main [README.md](README.md) for detailed documentation
