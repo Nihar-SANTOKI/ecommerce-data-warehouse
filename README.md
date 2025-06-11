@@ -32,7 +32,7 @@ graph LR
 - Docker and Docker Compose
 - PostgreSQL database (AlwaysData or local)
 - Snowflake account
-- Python 3.11+
+- Python 3.8+
 
 ### 1. Environment Setup
 
