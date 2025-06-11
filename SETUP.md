@@ -10,7 +10,7 @@ Before starting, ensure you have:
 - **PostgreSQL database** access (AlwaysData, AWS RDS, or local)
 - **Snowflake account** with appropriate permissions
 - **Git** for version control
-- **Python 3.11+** (if running scripts locally)
+- **Python 3.8+** (if running scripts locally)
 
 ## 🏗️ Step-by-Step Setup
 
