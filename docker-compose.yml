@@ -1,0 +1,30 @@
+services:
+  dbt:
+    build:
+      context: .  # Changed from ./docker to . (root directory)
+      dockerfile: docker/Dockerfile
+    container_name: ecommerce_dbt
+    volumes:
+      - .:/app
+      - ./config:/root/.dbt
+    environment:
+      - DBT_PROFILES_DIR=/root/.dbt
+    env_file:
+      - .env
+    working_dir: /app/dbt_project
+    command: tail -f /dev/null
+
+  postgres-client:
+    image: postgres:16
+    container_name: postgres_client
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+    env_file:
+      - .env
+    volumes:
+      - ./scripts:/scripts
+    command: tail -f /dev/null
+
+networks:
+  default:
+    name: ecommerce_network
