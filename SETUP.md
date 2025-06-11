@@ -18,7 +18,7 @@ Before starting, ensure you have:
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/Nihar-SANTOKI/ecommerce-data-warehouse
 cd ecommerce-dbt-warehouse
 
 # Create environment file from template
