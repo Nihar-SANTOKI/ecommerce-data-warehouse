@@ -38,7 +38,7 @@ graph LR
 
 ```bash
 # Clone the repository
-git clone <https://github.com/Nihar-SANTOKI/ecommerce-data-warehouse>
+git clone https://github.com/Nihar-SANTOKI/ecommerce-data-warehouse
 cd ecommerce-dbt-warehouse
 
 # Copy environment template
