@@ -55,4 +55,4 @@ docker-compose.override.yml
 # Secrets
 *.key
 *.pem
-config/profiles.yml
+config/profiles.yml.user.yml
