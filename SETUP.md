@@ -54,13 +54,13 @@ SNOWFLAKE_SCHEMA=PUBLIC
 
 ```bash
 # Start Docker services
-make docker-up
+docker-compose up -d
 
 # Create database schema
-make setup-postgres
+docker-compose exec dbt python /scripts/setup_postgres.py
 
 # Verify PostgreSQL connection
-make check-postgres
+docker-compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "SELECT 1;"
 ```
 
 ### 4. Setup Snowflake Database
@@ -82,7 +82,7 @@ snowsql -a your-account.snowflakecomputing.com -u your-username -f scripts/snowf
 
 ```bash
 # Generate and load test data into PostgreSQL
-make seed-data
+docker-compose exec dbt python /scripts/seed_data.py
 
 # This will create:
 # - 1,000 customers
@@ -94,33 +94,34 @@ make seed-data
 
 ```bash
 # Extract from PostgreSQL and load to Snowflake
-make load-snowflake
+docker-compose exec dbt python /scripts/loadDataToSnowflake.py
 
 # Verify data was loaded correctly
-make check-snowflake
+docker-compose exec dbt python /scripts/check_snowflake.py
 ```
 
 ### 7. Run dbt Transformations
 
 ```bash
 # Install dbt package dependencies
-make dbt-deps
+docker-compose exec dbt dbt deps
 
 # Run all dbt models
-make dbt-run
+docker-compose exec dbt dbt run
 
 # Run data quality tests
-make dbt-test
+docker-compose exec dbt dbt test
 
 # Generate documentation
-make dbt-docs
+docker-compose exec dbt dbt docs generate
+docker-compose exec dbt dbt docs serve --host 0.0.0.0 --port 8080
 ```
 
 ### 8. Verify Complete Pipeline
 
 ```bash
 # Run end-to-end verification
-make verify-pipeline
+docker-compose exec dbt python /scripts/verify_data_flow.py
 
 # This checks:
 # - PostgreSQL source data
@@ -131,20 +132,34 @@ make verify-pipeline
 
 ## 🎯 Quick Start (Automated)
 
-For a fully automated setup:
+For a fully automated setup, run these commands in sequence:
 
 ```bash
-# Run complete pipeline from scratch
-make full-pipeline
-
-# This will:
 # 1. Start Docker services
+docker-compose up -d
+
 # 2. Setup PostgreSQL schema
+docker-compose exec dbt python /scripts/setup_postgres.py
+
 # 3. Generate test data
+docker-compose exec dbt python /scripts/seed_data.py
+
 # 4. Load data to Snowflake
+docker-compose exec dbt python /scripts/loadDataToSnowflake.py
+
 # 5. Run dbt transformations
+docker-compose exec dbt dbt deps
+docker-compose exec dbt dbt run
+
 # 6. Execute data quality tests
+docker-compose exec dbt dbt test
+
 # 7. Verify end-to-end pipeline
+docker-compose exec dbt python /scripts/verify_data_flow.py
+
+# 8. Generate documentation
+docker-compose exec dbt dbt docs generate
+docker-compose exec dbt dbt docs serve --host 0.0.0.0 --port 8080
 ```
 
 ## 🔧 Configuration Details
@@ -156,7 +171,7 @@ The PostgreSQL database should have these tables:
 - `products` - Product catalog
 - `orders` - Transaction data
 
-Schema is automatically created by `make setup-postgres`.
+Schema is automatically created by `docker-compose exec dbt python /scripts/setup_postgres.py`.
 
 ### Snowflake Configuration
 
@@ -201,68 +216,7 @@ ecommerce_dw:
 
 ## 🚨 Troubleshooting
 
-### Common Issues
-
-**Docker Services Won't Start**
-```bash
-# Check Docker is running
-docker --version
-docker-compose --version
-
-# Check port conflicts
-docker ps -a
-netstat -tuln | grep 5432
-```
-
-**PostgreSQL Connection Failed**
-```bash
-# Test connection manually
-docker exec -it postgres_client psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB -c "SELECT 1;"
-
-# Check environment variables
-make show-env
-```
-
-**Snowflake Connection Issues**
-```bash
-# Debug dbt connection
-make dbt-debug
-
-# Check Snowflake account details
-# Ensure account URL is correct: account.region.snowflakecomputing.com
-```
-
-**dbt Models Fail to Run**
-```bash
-# Check specific model
-docker exec -it ecommerce_dbt dbt run --models stg_customers
-
-# View detailed logs
-docker exec -it ecommerce_dbt dbt --debug run --models stg_customers
-
-# Check data exists in source
-make check-snowflake
-```
-
-**Missing Data in Snowflake**
-```bash
-# Verify data load
-make verify-pipeline
-
-# Reload data
-make load-snowflake
-
-# Check source data
-make check-postgres
-```
-
-### Getting Help
-
-1. **Check logs**: `make docker-logs`
-2. **Debug dbt**: `make dbt-debug`
-3. **Verify data**: `make verify-pipeline`
-4. **Show environment**: `make show-env`
-5. **Health check**: `make health-check`
+If you encounter issues during setup, check the [TROUBLESHOOTING.md](TROUBLESHOOTING.md) file for detailed solutions to common problems.
 
 ## 🧪 Testing Your Setup
 
@@ -270,19 +224,40 @@ make check-postgres
 
 ```bash
 # Test 1: Data exists in PostgreSQL
-make check-postgres
+docker-compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "SELECT COUNT(*) FROM customers;"
 
 # Test 2: Data loaded to Snowflake
-make check-snowflake
+docker-compose exec dbt python /scripts/check_snowflake.py
 
 # Test 3: dbt models run successfully
-make dbt-run
+docker-compose exec dbt dbt run
 
 # Test 4: All tests pass
-make dbt-test
+docker-compose exec dbt dbt test
 
 # Test 5: Documentation generates
-make dbt-docs
+docker-compose exec dbt dbt docs generate
+```
+
+### Verification Queries
+
+Run these queries to verify your setup:
+
+```bash
+# Check PostgreSQL source data
+docker-compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
+SELECT 
+    'customers' as table_name, COUNT(*) as row_count FROM customers
+UNION ALL
+SELECT 
+    'products' as table_name, COUNT(*) as row_count FROM products
+UNION ALL
+SELECT 
+    'orders' as table_name, COUNT(*) as row_count FROM orders;
+"
+
+# Check dbt models (run this in Snowflake or via dbt)
+docker-compose exec dbt dbt run-operation check_model_counts
 ```
 
 ### Sample Queries
@@ -312,37 +287,79 @@ SELECT COUNT(*) FROM CORE.FACT_ORDERS;
 ### Daily Operations
 ```bash
 # Refresh data
-make refresh-data
+docker-compose exec dbt python /scripts/loadDataToSnowflake.py
+docker-compose exec dbt dbt run
 
 # Run tests
-make dbt-test
+docker-compose exec dbt dbt test
 
 # Check pipeline health
-make health-check
+docker-compose exec dbt python /scripts/verify_data_flow.py
 ```
 
 ### Weekly Operations
 ```bash
 # Full pipeline refresh
-make full-pipeline
+docker-compose exec dbt python /scripts/setup_postgres.py
+docker-compose exec dbt python /scripts/seed_data.py
+docker-compose exec dbt python /scripts/loadDataToSnowflake.py
+docker-compose exec dbt dbt run
+docker-compose exec dbt dbt test
 
 # Generate fresh documentation
-make dbt-docs
+docker-compose exec dbt dbt docs generate
+docker-compose exec dbt dbt docs serve --host 0.0.0.0 --port 8080
 
 # Performance check
-make performance-profile
+docker-compose exec dbt dbt run --vars '{"performance_profile": true}'
 ```
 
 ### Monthly Operations
 ```bash
-# Database backup
-make backup-db
+# Database backup (PostgreSQL)
+docker-compose exec postgres pg_dump -U $POSTGRES_USER $POSTGRES_DB > backup_$(date +%Y%m%d).sql
 
 # Clean artifacts
-make clean-all
+docker-compose exec dbt dbt clean
+docker system prune -f
 
 # Update dependencies
-make dbt-deps
+docker-compose exec dbt dbt deps
+```
+
+## 🛠️ Advanced Usage
+
+### Development Mode
+```bash
+# Start in development mode with volume mounts
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# Make changes to models and run
+docker-compose exec dbt dbt run --models modified_model
+
+# Hot reload documentation
+docker-compose exec dbt dbt docs generate
+```
+
+### Production Deployment
+```bash
+# Use production environment
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Run with production settings
+docker-compose exec dbt dbt run --target prod
+```
+
+### Monitoring and Logs
+```bash
+# View real-time logs
+docker-compose logs -f dbt
+
+# Monitor container resources
+docker-compose top
+
+# Check container health
+docker-compose ps
 ```
 
 ## 🤝 Need Help?
