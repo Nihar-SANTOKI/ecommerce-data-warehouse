@@ -1,7 +1,9 @@
+version: '3.8'
+
 services:
   dbt:
     build:
-      context: .  # Changed from ./docker to . (root directory)
+      context: .
       dockerfile: docker/Dockerfile
     container_name: ecommerce_dbt
     volumes:
@@ -13,6 +15,10 @@ services:
       - .env
     working_dir: /app/dbt_project
     command: tail -f /dev/null
+    depends_on:
+      - kafka
+    networks:
+      - ecommerce_network
 
   postgres-client:
     image: postgres:16
@@ -24,7 +30,114 @@ services:
     volumes:
       - ./scripts:/scripts
     command: tail -f /dev/null
+    networks:
+      - ecommerce_network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - ecommerce_network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - ecommerce_network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - ecommerce_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ecommerce_network
+
+  event-producer:
+    build:
+      context: ./streaming
+      dockerfile: Dockerfile.producer
+    container_name: event_producer
+    depends_on:
+      - kafka
+      - postgres-client
+    env_file:
+      - .env
+    volumes:
+      - ./streaming:/app
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    networks:
+      - ecommerce_network
+
+  stream-processor:
+    build:
+      context: ./streaming
+      dockerfile: Dockerfile.processor
+    container_name: stream_processor
+    depends_on:
+      - kafka
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - ./streaming:/app
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - ecommerce_network
+
+volumes:
+  redis_data:
 
 networks:
-  default:
-    name: ecommerce_network
+  ecommerce_network:
+    driver: bridge

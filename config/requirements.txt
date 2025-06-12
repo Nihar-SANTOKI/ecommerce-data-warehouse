@@ -20,3 +20,24 @@ PyYAML==6.0.1
 # Protocol buffers (compatibility fix)
 protobuf>=3.20.0,<5.0.0
 googleapis-common-protos>=1.56.0
+
+# Kafka and streaming
+kafka-python==2.0.2
+confluent-kafka==2.3.0
+
+# Database connections
+redis==5.0.1
+
+# Spark (for stream processing)
+pyspark==3.5.0
+requests==2.31.0
+
+# Monitoring and logging
+prometheus-client==0.18.0
+structlog==23.1.0
+
+# JSON processing
+orjson==3.9.7
+
+# Datetime handling
+python-dateutil==2.8.2
