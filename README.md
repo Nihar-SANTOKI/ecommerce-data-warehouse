@@ -52,39 +52,40 @@ vim .env
 
 ```bash
 # Start Docker services
-make docker-up
+docker-compose up -d
 
 # Setup PostgreSQL schema
-make setup-postgres
+docker-compose exec dbt python /scripts/setup_postgres.py
 
 # Seed test data
-make seed-data
+docker-compose exec dbt python /scripts/seed_data.py
 
 # Load data to Snowflake
-make load-snowflake
+docker-compose exec dbt python /scripts/loadDataToSnowflake.py
 ```
 
 ### 3. dbt Transformations
 
 ```bash
 # Install dbt dependencies
-make dbt-deps
+docker-compose exec dbt dbt deps
 
 # Run dbt transformations
-make dbt-run
+docker-compose exec dbt dbt run
 
 # Run tests
-make dbt-test
+docker-compose exec dbt dbt test
 
 # Generate documentation
-make dbt-docs
+docker-compose exec dbt dbt docs generate
+docker-compose exec dbt dbt docs serve --host 0.0.0.0 --port 8080
 ```
 
 ### 4. Verify Pipeline
 
 ```bash
 # Verify end-to-end data flow
-make verify-pipeline
+docker-compose exec dbt python /scripts/verify_data_flow.py
 ```
 
 ## 📊 Data Models
@@ -112,35 +113,36 @@ make verify-pipeline
 
 ### Docker Management
 ```bash
-make docker-up          # Start all services
-make docker-down        # Stop all services  
-make docker-shell       # Access dbt container shell
-make docker-logs        # View container logs
+docker-compose up -d               # Start all services
+docker-compose down               # Stop all services  
+docker-compose exec dbt bash      # Access dbt container shell
+docker-compose logs -f            # View container logs
 ```
 
 ### Database Operations
 ```bash
-make setup-postgres     # Initialize PostgreSQL schema
-make seed-data          # Generate and load test data
-make load-snowflake     # ETL from PostgreSQL to Snowflake
-make setup-snowflake    # Configure Snowflake schemas
+docker-compose exec dbt python /scripts/setup_postgres.py      # Initialize PostgreSQL schema
+docker-compose exec dbt python /scripts/seed_data.py           # Generate and load test data
+docker-compose exec dbt python /scripts/loadDataToSnowflake.py # ETL from PostgreSQL to Snowflake
+docker-compose exec dbt python /scripts/setup_snowflake.py     # Configure Snowflake schemas
 ```
 
 ### dbt Operations
 ```bash
-make dbt-deps          # Install dbt packages
-make dbt-run           # Run all models
-make dbt-test          # Run data quality tests
-make dbt-docs          # Generate documentation
-make dbt-clean         # Clean target directory
-make dbt-debug         # Debug connection issues
+docker-compose exec dbt dbt deps                               # Install dbt packages
+docker-compose exec dbt dbt run                                # Run all models
+docker-compose exec dbt dbt test                               # Run data quality tests
+docker-compose exec dbt dbt docs generate                      # Generate documentation
+docker-compose exec dbt dbt docs serve --host 0.0.0.0 --port 8080  # Serve documentation
+docker-compose exec dbt dbt clean                              # Clean target directory
+docker-compose exec dbt dbt debug                              # Debug connection issues
 ```
 
 ### Utilities
 ```bash
-make verify-pipeline   # End-to-end data verification
-make check-postgres    # Verify PostgreSQL data
-make check-snowflake   # Verify Snowflake data
+docker-compose exec dbt python /scripts/verify_data_flow.py    # End-to-end data verification
+docker-compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB  # Verify PostgreSQL data
+docker-compose exec dbt python /scripts/check_snowflake.py     # Verify Snowflake data
 ```
 
 ## 📈 Key Metrics & KPIs
@@ -270,7 +272,8 @@ The project includes comprehensive data quality checks:
 
 Generate and serve documentation:
 ```bash
-make dbt-docs
+docker-compose exec dbt dbt docs generate
+docker-compose exec dbt dbt docs serve --host 0.0.0.0 --port 8080
 # Opens browser to http://localhost:8080
 ```
 
@@ -281,38 +284,85 @@ make dbt-docs
 **Connection Errors**
 ```bash
 # Debug dbt connections
-make dbt-debug
+docker-compose exec dbt dbt debug
 
 # Check environment variables
-docker exec -it ecommerce_dbt env | grep SNOWFLAKE
+docker-compose exec dbt env | grep SNOWFLAKE
 ```
 
 **Missing Data**
 ```bash
 # Verify data pipeline
-make verify-pipeline
+docker-compose exec dbt python /scripts/verify_data_flow.py
 
 # Check specific layer
-make check-postgres  # Source data
-make check-snowflake # Transformed data
+docker-compose exec postgres psql -U $POSTGRES_USER -d $POSTGRES_DB  # Source data
+docker-compose exec dbt python /scripts/check_snowflake.py          # Transformed data
 ```
 
 **dbt Build Failures**
 ```bash
 # Clean and rebuild
-make dbt-clean
-make dbt-deps
-make dbt-run
+docker-compose exec dbt dbt clean
+docker-compose exec dbt dbt deps
+docker-compose exec dbt dbt run
 
 # Run specific model
-docker exec -it ecommerce_dbt dbt run --models stg_customers
+docker-compose exec dbt dbt run --models stg_customers
+```
+
+## 🚀 Advanced Usage Examples
+
+### Full Pipeline Setup
+```bash
+# 1. Start services
+docker-compose up -d
+
+# 2. Setup databases
+docker-compose exec dbt python /scripts/setup_postgres.py
+docker-compose exec dbt python /scripts/seed_data.py
+docker-compose exec dbt python /scripts/loadDataToSnowflake.py
+
+# 3. Run dbt pipeline
+docker-compose exec dbt dbt deps
+docker-compose exec dbt dbt run
+docker-compose exec dbt dbt test
+
+# 4. Generate docs
+docker-compose exec dbt dbt docs generate
+docker-compose exec dbt dbt docs serve --host 0.0.0.0 --port 8080
+```
+
+### Development Workflow
+```bash
+# Make model changes, then:
+docker-compose exec dbt dbt run --models modified_model
+docker-compose exec dbt dbt test --models modified_model
+
+# Or run everything with build command
+docker-compose exec dbt dbt build
+```
+
+### Model-Specific Operations
+```bash
+# Run specific model with dependencies
+docker-compose exec dbt dbt run --models +dim_customers
+
+# Run downstream models
+docker-compose exec dbt dbt run --models dim_customers+
+
+# Compile without running
+docker-compose exec dbt dbt compile
+
+# Run tests for specific model
+docker-compose exec dbt dbt test --models dim_customers
 ```
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/new-feature`
-3. Make changes and test: `make dbt-test`
+3. Make changes and test: `docker-compose exec dbt dbt test`
 4. Commit changes: `git commit -am 'Add new feature'`
 5. Push to branch: `git push origin feature/new-feature`
 6. Submit pull request
