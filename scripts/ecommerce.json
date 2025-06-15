@@ -1,0 +1,31 @@
+{
+  "dashboard": {
+    "title": "E-commerce Real-time Dashboard",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "Revenue per Minute",
+        "datasource": "Redis",
+        "targets": [{
+          "query": "TS.RANGE revenue_per_minute - + AGGREGATION SUM 60000"
+        }]
+      },
+      {
+        "type": "gauge",
+        "title": "Current Revenue",
+        "datasource": "Redis",
+        "targets": [{
+          "query": "GET current_revenue"
+        }]
+      },
+      {
+        "type": "alertlist",
+        "title": "Active Alerts",
+        "datasource": "Redis",
+        "targets": [{
+          "query": "LRANGE alerts 0 5"
+        }]
+      }
+    ]
+  }
+}
