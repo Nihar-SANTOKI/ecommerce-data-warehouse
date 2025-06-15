@@ -28,7 +28,6 @@ COPY . /app/
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV DBT_PROFILES_DIR=/root/.dbt
-ENV PYTHONUNBUFFERED=1
 
 # Create dbt profiles directory
 RUN mkdir -p /root/.dbt
